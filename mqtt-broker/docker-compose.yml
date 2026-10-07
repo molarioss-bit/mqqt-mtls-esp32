@@ -1,0 +1,21 @@
+services:
+  fix-permissions:
+    image: alpine:latest
+    container_name: mqtt-fix-permissions
+    volumes:
+      - ./mosquitto/certs:/certs
+    command: sh -c "chmod 644 /certs/*.key /certs/*.crt 2>/dev/null; echo 'Permissions fixed'"
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mqtt-broker
+    depends_on:
+      fix-permissions:
+        condition: service_completed_successfully
+    ports:
+      - "8883:8883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/certs:/mosquitto/certs
+      - ./mosquitto/data:/mosquitto/data
+    restart: unless-stopped
