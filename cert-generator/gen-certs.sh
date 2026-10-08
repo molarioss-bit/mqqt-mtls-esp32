@@ -1,111 +1,71 @@
-#!/bin/sh
+```bash
+#!/bin/bash
 set -e
 
-echo "=== MQTT mTLS Certificate Setup ==="
-echo "1) Generate new CA + server + client certificates"
-echo "2) I already have certificates, just validate/copy them"
-echo "3) Generate a new client certificate signed by an existing CA"
-read -p "Choose [1/2/3]: " CHOICE
+echo "=========================================="
+echo " MQTT Docker Certificate Deployment"
+echo "=========================================="
 
-mkdir -p /certs
-cd /certs
+# Directory containing this script
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-if [ "$CHOICE" = "2" ]; then
-  echo ""
-  echo "Place your existing files in the 'existing' folder before running this."
-  echo "Expected: ca.crt, server.crt, server.key, <client>.crt, <client>.key"
-  echo ""
+# Project root
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-  if [ ! -d /existing ]; then
-    echo "ERROR: /existing folder not found. Mount your certs folder to /existing and retry."
-    exit 1
-  fi
+# Certificate source
+SOURCE="/certs"
 
-  cp /existing/*.crt /certs/ 2>/dev/null || true
-  cp /existing/*.key /certs/ 2>/dev/null || true
+# Docker Mosquitto certificate directory
+DEST="$PROJECT_DIR/mosquitto/certs"
 
-  for f in /certs/*.crt; do
-    base=$(basename "$f" .crt)
-    if [ -f "/certs/$base.key" ]; then
-      cert_mod=$(openssl x509 -noout -modulus -in "$f" | openssl md5)
-      key_mod=$(openssl rsa -noout -modulus -in "/certs/$base.key" | openssl md5)
-      if [ "$cert_mod" = "$key_mod" ]; then
-        echo "OK: $base.crt matches $base.key"
-      else
-        echo "WARNING: $base.crt does NOT match $base.key"
-      fi
+echo ""
+echo "Project:     $PROJECT_DIR"
+echo "Source:      $SOURCE"
+echo "Destination: $DEST"
+echo ""
+
+# Check source certificates
+echo "--- Checking certificates ---"
+
+for FILE in ca.crt server.crt server.key; do
+    if [ ! -f "$SOURCE/$FILE" ]; then
+        echo "ERROR: Missing $SOURCE/$FILE"
+        exit 1
     fi
-  done
 
-  chmod 644 /certs/*.key /certs/*.crt 2>/dev/null || true
-  echo "--- Done. Existing certificates copied into /certs ---"
-  ls -l /certs
-  exit 0
-fi
+    echo "OK: $FILE"
+done
 
-if [ "$CHOICE" = "3" ]; then
-  echo ""
-  echo "This requires the existing CA (ca.crt and ca.key) mounted at /existing."
-  echo ""
+# Create destination directory if it doesn't exist
+mkdir -p "$DEST"
 
-  if [ ! -f /existing/ca.crt ] || [ ! -f /existing/ca.key ]; then
-    echo "ERROR: /existing/ca.crt and /existing/ca.key are both required. Mount them and retry."
-    exit 1
-  fi
+echo ""
+echo "--- Copying certificates ---"
 
-  cp /existing/ca.crt /certs/ca.crt
-  cp /existing/ca.key /certs/ca.key
+cp "$SOURCE/ca.crt"     "$DEST/ca.crt"
+cp "$SOURCE/server.crt" "$DEST/server.crt"
+cp "$SOURCE/server.key" "$DEST/server.key"
 
-  read -p "New client identifier (e.g. esp32-02): " CLIENT
-  read -p "Validity in days [825]: " DAYS
-  DAYS=${DAYS:-825}
+# Set permissions
+chmod 644 "$DEST/ca.crt"
+chmod 644 "$DEST/server.crt"
+chmod 644 "$DEST/server.key"
 
-  echo "--- Generating client certificate for $CLIENT, signed by existing CA ---"
-  openssl genrsa -out "$CLIENT.key" 2048
-  openssl req -new -key "$CLIENT.key" -subj "/CN=$CLIENT" -out "$CLIENT.csr"
-  openssl x509 -req -in "$CLIENT.csr" -CA ca.crt -CAkey ca.key -CAcreateserial \
-    -days "$DAYS" \
-    -extfile <(printf "basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=clientAuth") \
-    -out "$CLIENT.crt"
+echo "Certificates copied successfully."
 
-  rm -f "$CLIENT.csr" *.srl ca.key
-  chmod 644 /certs/*.key /certs/*.crt 2>/dev/null || true
-  echo "--- Done. $CLIENT.crt and $CLIENT.key are in /certs ---"
-  ls -l /certs
-  exit 0
-fi
+echo ""
+echo "--- Verifying server certificate ---"
 
-# ---- Option 1: generate everything new ----
-echo "=== Generating new CA + server + client certificates ==="
-read -p "Broker hostname or IP (used in server cert): " SERVER
-read -p "Client identifier (e.g. esp32): " CLIENT
-read -p "Validity in days [825]: " DAYS
-DAYS=${DAYS:-825}
+openssl verify \
+    -CAfile "$DEST/ca.crt" \
+    "$DEST/server.crt"
 
-echo "--- Generating CA ---"
-openssl genrsa -out ca.key 2048
-openssl req -x509 -new -key ca.key -days 3650 -subj "/CN=MyProjectCA" \
-  -addext "basicConstraints=critical,CA:TRUE" \
-  -addext "keyUsage=critical,keyCertSign,cRLSign" \
-  -out ca.crt
+echo ""
+echo "--- Installed files ---"
+ls -l "$DEST"
 
-echo "--- Generating server certificate for $SERVER ---"
-openssl genrsa -out server.key 2048
-openssl req -new -key server.key -subj "/CN=$SERVER" -out server.csr
-openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
-  -days "$DAYS" \
-  -extfile <(printf "subjectAltName=IP:%s\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth" "$SERVER") \
-  -out server.crt
-
-echo "--- Generating client certificate for $CLIENT ---"
-openssl genrsa -out "$CLIENT.key" 2048
-openssl req -new -key "$CLIENT.key" -subj "/CN=$CLIENT" -out "$CLIENT.csr"
-openssl x509 -req -in "$CLIENT.csr" -CA ca.crt -CAkey ca.key -CAcreateserial \
-  -days "$DAYS" \
-  -extfile <(printf "basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=clientAuth") \
-  -out "$CLIENT.crt"
-
-rm -f *.csr *.srl
-chmod 644 /certs/*.key /certs/*.crt 2>/dev/null || true
-echo "--- Done. Files are in the mounted /certs folder ---"
-ls -l /certs
+echo ""
+echo "=========================================="
+echo " Deployment complete"
+echo "=========================================="
+```
