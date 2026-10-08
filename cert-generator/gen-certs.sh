@@ -1,71 +1,52 @@
-```bash
-#!/bin/bash
+#!/bin/sh
 set -e
 
-echo "=========================================="
-echo " MQTT Docker Certificate Deployment"
-echo "=========================================="
+echo "=== MQTT mTLS Certificate Generator ==="
 
-# Directory containing this script
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Project root
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Certificate source
-SOURCE="/certs"
+mkdir -p /certs
+cd /certs
 
-# Docker Mosquitto certificate directory
-DEST="$PROJECT_DIR/mosquitto/certs"
+echo "++++++++++ Generating CA ++++++++++"
 
-echo ""
-echo "Project:     $PROJECT_DIR"
-echo "Source:      $SOURCE"
-echo "Destination: $DEST"
-echo ""
+# Generating the CA key
+openssl genrsa -out ca.key 2048  
 
-# Check source certificates
-echo "--- Checking certificates ---"
+# This creates an X.509 certificate valid for 10 years
+openssl req -x509 -new -key ca.key -days 3650 -out ca.crt
 
-for FILE in ca.crt server.crt server.key; do
-    if [ ! -f "$SOURCE/$FILE" ]; then
-        echo "ERROR: Missing $SOURCE/$FILE"
-        exit 1
-    fi
 
-    echo "OK: $FILE"
-done
+echo "++++++++++ Generating server certificate ++++++++++"
 
-# Create destination directory if it doesn't exist
-mkdir -p "$DEST"
+#Server key
+openssl genrsa -out server.key 2048
 
-echo ""
-echo "--- Copying certificates ---"
+#Here with this we making a request to make the certificate, after that we need the CA approval
+openssl req -new -key server.key -out server.csr
 
-cp "$SOURCE/ca.crt"     "$DEST/ca.crt"
-cp "$SOURCE/server.crt" "$DEST/server.crt"
-cp "$SOURCE/server.key" "$DEST/server.key"
+#x.509 certificate signed by the CA
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
 
-# Set permissions
-chmod 644 "$DEST/ca.crt"
-chmod 644 "$DEST/server.crt"
-chmod 644 "$DEST/server.key"
+echo "++++++++++ Generating client certificate ++++++++++"
 
-echo "Certificates copied successfully."
+#Client key
+openssl genrsa -out "$CLIENT.key" 2048
 
-echo ""
-echo "--- Verifying server certificate ---"
+#Client request for the certificate
+read -p "Enter your client name (used for namine ; "client".cert): " CLIENT
+read -p "Validity in days [825]: " DAYS
 
-openssl verify \
-    -CAfile "$DEST/ca.crt" \
-    "$DEST/server.crt"
+#default validity day is 825
+DAYS=${DAYS:-825}
 
-echo ""
-echo "--- Installed files ---"
-ls -l "$DEST"
+#Request +
+openssl req -new -key "$CLIENT.key" -out "$CLIENT.csr"
+openssl x509 -req -in "$CLIENT.csr" -CA ca.crt -CAkey ca.key -CAcreateserial \
+  -days "$DAYS" -out "$CLIENT.crt"
 
-echo ""
-echo "=========================================="
-echo " Deployment complete"
-echo "=========================================="
-```
+#Cleaning
+rm -f *.csr *.srl
+chmod 644 /certs/*.key /certs/*.crt
+echo "_-_-_-_-_ Done. Files are in the mounted /certs folder _-_-_-_-_ "
+ls -l /certs
