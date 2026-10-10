@@ -1,7 +1,9 @@
-ssid=Inwi_Home+_6B16
-password=82842639
-broker=192.168.1.165
+ssid=
+password=
+broker=
 port=8883
+
+
 sensor=light,ldr,32,light
 
 sensor=button,button,18,hello
