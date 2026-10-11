@@ -64,7 +64,7 @@ void setup() {
   for (int i = 0; i < sensorCount; i++) {
 
     if (sensors[i].type == "digital")        pinMode(sensors[i].pin, INPUT);
-    if (sensors[i].type == "analog")        pinMode(sensors[i].pin, INPUT);
+    if (sensors[i].type == "analog")         pinMode(sensors[i].pin, INPUT);
     if (sensors[i].type == "button")         pinMode(sensors[i].pin, INPUT_PULLUP);
     if (sensors[i].type == "ldr")            pinMode(sensors[i].pin, INPUT_PULLDOWN);
     if (sensors[i].type == "ntc")            pinMode(sensors[i].pin, INPUT);
@@ -79,48 +79,27 @@ void setup() {
 
   esp_publish.setServer(broker_ip.c_str(), port);
   connect_mqtt_server();
+
+  Serial.setDebugOutput(true);
 }
 
 void loop()
 {
-
 
   if (WiFi.status() != WL_CONNECTED) connect();
   if (!esp_publish.connected()) connect_mqtt_server();
   esp_publish.loop();
 
 
-  
-
 
   //I can optimize this for loop and make more functions, but the code took me too much time already, I'll do that later
   for(int i = 0; i < sensorCount; i++){
 
-    if (sensors[i].type == "button"){
-
-      if(millis() - last[i] > 1000){
-
-        esp_publish.publish(sensors[i].topic.c_str(), readSensors(sensors[i]).c_str());
-        last[i] = millis();
-      }
-    }
-
-    if (sensors[i].type == "ldr"){
-
-      if(millis() - last[i] > 1000){
-
-        esp_publish.publish(sensors[i].topic.c_str(), readSensors(sensors[i]).c_str());
-        last[i] = millis();
-      }
-    }
-
-    if (sensors[i].type == "ntc"){
-
-      if(millis() - last[i] > 1000){
+      if(millis() - last[i] > sensors[i].delay){
 
         esp_publish.publish(sensors[i].topic.c_str(), readSensors(sensors[i]).c_str());
         last[i] = millis();
       }
     }
   }
-}
+
