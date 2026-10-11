@@ -1,0 +1,14 @@
+# Certificates and keys: never commit these
+certs/
+test-certs/
+mqtt-broker/mosquitto/certs/*
+!mqtt-broker/mosquitto/certs/.gitkeep
+mqtt-broker/mosquitto/data/
+esp-firmware/data/*.crt
+esp-firmware/data/*.key
+esp-firmware/data/config.txt
+
+# PlatformIO / editors
+.pio/
+.vscode/
+*.code-workspace

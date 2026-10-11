@@ -1,0 +1,8 @@
+ssid=YOUR_WIFI_NAME
+password=YOUR_WIFI_PASSWORD
+broker=192.168.1.50
+port=8883
+
+# sensor=<name>,<type>,<pin>,<topic>
+sensor=light,ldr,32,light
+sensor=button,button,18,hello
