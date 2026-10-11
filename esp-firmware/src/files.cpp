@@ -42,7 +42,7 @@ bool loadConfiguration() {
       sensors[sensorCount].type  = data.substring(c1 + 1, c2);
       sensors[sensorCount].pin   = data.substring(c2 + 1, c3).toInt();
       sensors[sensorCount].topic = data.substring(c3 + 1, c4);
-      sensors[sensorCount].pin   = data.substring(c4 + 1).toInt();
+      sensors[sensorCount].delay  = data.substring(c4 + 1).toInt();
 
       sensors[sensorCount].topic.trim();
       sensorCount++;
