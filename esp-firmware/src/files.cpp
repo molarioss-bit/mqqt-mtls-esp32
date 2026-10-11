@@ -1,5 +1,8 @@
 #include <LittleFS.h>
-#include "files.h"   // was "network.h" — fixed
+#include "files.h"  
+
+
+
 
 String readFile(const char* path) {
   File f = LittleFS.open(path, "r");
@@ -33,13 +36,15 @@ bool loadConfiguration() {
       int c1 = data.indexOf(',');
       int c2 = data.indexOf(',', c1 + 1);
       int c3 = data.indexOf(',', c2 + 1);
+      int c4 = data.indexOf(',', c3 + 1);
 
       sensors[sensorCount].name  = data.substring(0, c1);
       sensors[sensorCount].type  = data.substring(c1 + 1, c2);
       sensors[sensorCount].pin   = data.substring(c2 + 1, c3).toInt();
-      sensors[sensorCount].topic = data.substring(c3 + 1);
+      sensors[sensorCount].topic = data.substring(c3 + 1, c4);
+      sensors[sensorCount].pin   = data.substring(c4 + 1).toInt();
 
-       sensors[sensorCount].topic.trim();
+      sensors[sensorCount].topic.trim();
       sensorCount++;
     }
   }
