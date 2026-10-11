@@ -11,6 +11,7 @@ struct Sensor{     //we can add more config variables later
     String type;
     int pin;
     String topic;
+    int delay;
 };
 
 
