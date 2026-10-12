@@ -3,12 +3,11 @@
 **An ESP32 that sends sensor data to an MQTT broker over mutual TLS, using a certificate authority I built myself.**
 
 
-https://github.com/user-attachments/assets/faef858b-f503-448b-8d8b-ae047656e0f1
-
+https://github.com/molarioss-bit/mqqt-mtls-esp32/blob/main/docs/images/demo.mp4
 
 Most MQTT tutorials send data in plain text with no authentication, so anyone on the network can read it or publish fake values. This project closes that gap end to end: the broker only talks to devices that hold a certificate I issued, and the device only talks to a broker it can verify.
 
-![Architecture: ESP32 and MQTT Explorer connect to the Mosquitto broker over mTLS, all certificates issued by a private CA](docs/images/architecture.svg)
+https://github.com/molarioss-bit/mqqt-mtls-esp32/blob/main/docs/images/architecture.svg
 
 ## Highlights
 
@@ -23,8 +22,8 @@ Adding a sensor takes one line in `config.txt`:
 ```
 sensor=light,ldr,32,light
 ```
+https://github.com/molarioss-bit/mqqt-mtls-esp32/blob/main/docs/images/setup.jpep
 
-<img width="1600" height="922" alt="WhatsApp Image 2026-10-12 at 21 50 33" src="https://github.com/user-attachments/assets/ce8f5049-9c5b-4fdc-a8f7-49c6da3328f5" />
 
 ## The bug that taught me the most
 
