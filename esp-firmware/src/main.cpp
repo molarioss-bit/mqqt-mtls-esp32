@@ -9,7 +9,7 @@
 #include "files.h"
 #include "readSensors.h"
 
-// ---------- Values loaded from /config.txt ----------
+// ---------- Values loaded from /config.txt -------------
 String ssid, password, broker_ip;
 int port = 8883;
 
@@ -20,14 +20,15 @@ const int daysaving = 0;
 // ---------- Certificates loaded from LittleFS ----------
 String ca_crt, esp_crt, esp_key;
 
-// ---------- Sensors ----------
+// ---------- Sensors ----------------------------------
 const int MAX_SENSORS = 5;
 Sensor sensors[MAX_SENSORS];
 int sensorCount = 0;
 
 unsigned long last[MAX_SENSORS] = {0};
+String lastButton[MAX_SENSORS];
 
-// ---------- TLS ----------
+// ---------- TLS -----------------------------------------
 WiFiClientSecure esp_TLS;
 PubSubClient esp_publish(esp_TLS);
 
@@ -66,7 +67,7 @@ void setup() {
     if (sensors[i].type == "digital")        pinMode(sensors[i].pin, INPUT);
     if (sensors[i].type == "analog")         pinMode(sensors[i].pin, INPUT);
     if (sensors[i].type == "button")         pinMode(sensors[i].pin, INPUT_PULLUP);
-    if (sensors[i].type == "ldr")            pinMode(sensors[i].pin, INPUT_PULLDOWN);
+    if (sensors[i].type == "ldr")            pinMode(sensors[i].pin, INPUT);
     if (sensors[i].type == "ntc")            pinMode(sensors[i].pin, INPUT);
   }
 
@@ -93,13 +94,25 @@ void loop()
 
 
   //I can optimize this for loop and make more functions, but the code took me too much time already, I'll do that later
-  for(int i = 0; i < sensorCount; i++){
+for (int i = 0; i < sensorCount; i++) {
 
-      if(millis() - last[i] > sensors[i].delay){
-
-        esp_publish.publish(sensors[i].topic.c_str(), readSensors(sensors[i]).c_str());
-        last[i] = millis();
+  // buttons: check every sensors[i].delay, publish only when the state changes
+  if (sensors[i].type == "button") {
+    if (millis() - last[i] > sensors[i].delay) {
+      last[i] = millis();
+      String v = readSensors(sensors[i]);
+      if (v != lastButton[i]) {
+        esp_publish.publish(sensors[i].topic.c_str(), v.c_str());
+        lastButton[i] = v;
       }
     }
+    continue;  //so we dont have duplicated button reads 
   }
 
+  //normal reading
+  if (millis() - last[i] > sensors[i].delay) {
+    esp_publish.publish(sensors[i].topic.c_str(), readSensors(sensors[i]).c_str());
+    last[i] = millis();
+  }
+}
+}
