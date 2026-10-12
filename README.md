@@ -2,32 +2,34 @@
 
 **An ESP32 that sends sensor data to an MQTT broker over mutual TLS, using a certificate authority I built myself.**
 
+<video controls playsinline width="100%">
+  <source src="docs/images/demo.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
 
-https://github.com/molarioss-bit/mqqt-mtls-esp32/blob/main/docs/images/demo.mp4
+Most MQTT tutorials send data in plain text with no authentication, so anyone on the network can read it or publish fake values. This project closes that gap end to end: the broker only talks to devices with the right certificate, and the ESP32 checks the broker certificate before it ever sends a single byte.
 
-Most MQTT tutorials send data in plain text with no authentication, so anyone on the network can read it or publish fake values. This project closes that gap end to end: the broker only talks to devices that hold a certificate I issued, and the device only talks to a broker it can verify.
-
-https://github.com/molarioss-bit/mqqt-mtls-esp32/blob/main/docs/images/architecture.svg
+![Architecture overview](docs/images/architecture.svg)
 
 ## Highlights
 
 - **Mutual TLS.** The broker refuses any client without a certificate signed by my CA, and the ESP32 verifies the broker against the same CA.
-- **My own certificate authority.** A Dockerized, menu-driven generator creates the CA, server and client certificates, copies each file to the right folder, and checks that every certificate matches its key and carries the extensions strict TLS stacks require.
+- **My own certificate authority.** A Dockerized, menu-driven generator creates the CA, server and client certificates, copies each file to the right folder, and checks that every certificate matches the right profile.
 - **Reproducible.** The broker and the generator run in Docker, the firmware builds with PlatformIO, and adding a sensor is one line in a text file.
 - **Sensible traffic.** A button publishes only when its state changes, and analog sensors publish on a configurable interval.
 - **Honest about its limits.** There is a threat model and a list of known gaps in the docs, not just a feature list.
 
 Adding a sensor takes one line in `config.txt`:
 
-```
+```ini
 sensor=light,ldr,32,light
 ```
-https://github.com/molarioss-bit/mqqt-mtls-esp32/blob/main/docs/images/setup.jpep
 
+![Setup screenshot](docs/images/setup.jpep)
 
 ## The bug that taught me the most
 
-My first generated certificates worked with the broker (OpenSSL) but the ESP32 (mbedTLS) rejected every handshake, while older hand-made certificates worked. The cause was missing X.509 extensions: OpenSSL ignores them, mbedTLS enforces them. Fixing that exposed a second problem: a desktop MQTT client and the ESP32 check the server's name in different ways, so one certificate had to satisfy both. The full story, with the other problems I hit, is in [docs/LESSONS.md](docs/LESSONS.md).
+My first generated certificates worked with the broker (OpenSSL) but the ESP32 (mbedTLS) rejected every handshake, while older hand-made certificates worked. The cause was missing X.509 extensions: OpenSSL was lenient, and the ESP32 was strict. I learned how certificate profiles really matter in practice, not just in theory.
 
 ## Documentation
 
@@ -38,7 +40,6 @@ My first generated certificates worked with the broker (OpenSSL) but the ESP32 (
 | [docs/LESSONS.md](docs/LESSONS.md) | Problems I ran into and what I learned from each |
 
 ## What I would add next
-
 
 1. **Certificate revocation**, so a lost or stolen device can be cut off before its certificate expires.
 2. **Per-device identity and ACLs**, so each device can publish only to its own topics.
