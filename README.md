@@ -2,9 +2,13 @@
 
 **An ESP32 that sends sensor data to an MQTT broker over mutual TLS, using a certificate authority I built myself.**
 
-![mTLS Button Demo](docs/images/demo.gif)
 
-<video src="docs/images/demo.mp4" controls width="100%"></video>
+
+
+https://github.com/user-attachments/assets/2507d01a-47b7-41e1-a032-f8a8a0249184
+
+
+
 
 ---
 Most MQTT tutorials send data in plain text with no authentication, so anyone on the network can read it or publish fake values. This project closes that gap end to end: the broker only talks to devices with the right certificate, and the ESP32 checks the broker certificate before it ever sends a single byte.
